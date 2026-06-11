@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FaultSense — Distribution Grid Fault Diagnosis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --paper:      #F5F0E6;
+  --paper-alt:  #EFE9DC;
+  --ink:        #0E1F3D;
+  --ink-soft:   #2A3B5E;
+  --ink-mute:   #6A6F7D;
+  --ink-fade:   #9DA0AB;
+  --rule:       #D9D1BE;
+  --rule-soft:  #E6DFC9;
+  --white:      #FFFFFF;
+  --copper:     #B5481E;
+  --copper-dim: #8A3614;
+  --copper-fade:#F7D9C6;
+  --moss:       #2F6049;
+  --moss-fade:  #CCDCD0;
+  --warning:    #B07A1C;
+  --warning-fade:#F0E3C2;
+  --crimson:    #983027;
+  --crimson-fade:#F0D2CB;
+  --display:    'Inter', system-ui, sans-serif;
+  --body:       'Inter', system-ui, sans-serif;
+  --mono:       'JetBrains Mono', 'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+::selection { background: var(--ink); color: var(--paper); }
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+}
+
+/* ─── PAPER TEXTURE ─── */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(181,72,30,0.015) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(14,31,61,0.02) 0%, transparent 50%);
+  opacity: 0.7;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 260px; min-height: 100vh; background: var(--paper-alt);
+  border-right: 1px solid var(--rule); position: fixed;
+  top: 0; left: 0; bottom: 0; z-index: 100;
+  display: flex; flex-direction: column;
+}
+.brand { padding: 28px 28px 24px; border-bottom: 1px solid var(--rule); }
+.brand-mark {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;
+}
+.brand-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.5px;  color: var(--ink);
+}
+.brand-mark-icon {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--copper);
+  position: relative; flex-shrink: 0;
+  animation: pulse-mark 3s ease-in-out infinite;
+}
+@keyframes pulse-mark {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(181,72,30,0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(181,72,30,0); }
+}
+.brand-sub {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-mute);
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+
+.api-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 14px; padding: 4px 10px; background: var(--white);
+  border: 1px solid var(--rule); border-radius: 100px;
+  font-size: 11px; font-family: var(--mono); color: var(--ink-mute);
+}
+.status-orb {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--ink-fade);
+  transition: all 0.3s;
+}
+.status-orb.online {
+  background: var(--moss);
+  box-shadow: 0 0 0 2px var(--moss-fade);
+}
+.status-orb.offline { background: var(--crimson); }
+
+.nav-section {
+  padding: 16px 14px; flex: 1;
+}
+.nav-eyebrow {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-fade);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 8px 14px 12px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 14px; margin-bottom: 2px;
+  font-family: var(--body); font-size: 13.5px; font-weight: 500;
+  color: var(--ink-soft); cursor: pointer; border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+.nav-item:hover { background: var(--white); color: var(--ink); transform: translateX(2px); }
+.nav-item.active {
+  background: var(--ink); color: var(--paper);
+}
+.nav-num {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-fade);
+  width: 16px;
+}
+.nav-item.active .nav-num { color: var(--paper); opacity: 0.6; }
+
+.sidebar-footer {
+  padding: 20px 28px; border-top: 1px solid var(--rule);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sidebar-footer a {
+  font-size: 11px; font-family: var(--mono); color: var(--ink-mute);
+  text-decoration: none; transition: color 0.15s;
+}
+.sidebar-footer a:hover { color: var(--copper); }
+
+/* ─── MAIN ─── */
+.main { margin-left: 260px; flex: 1; min-height: 100vh; position: relative; z-index: 2; }
+.section { display: none; padding: 56px 64px 80px; max-width: 1200px; margin: 0 auto; }
+.section.active { display: block; animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── PAGE HEADER ─── */
+.page-eyebrow {
+  font-family: var(--mono); font-size: 11px; color: var(--copper);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.page-eyebrow::before {
+  content: ''; width: 24px; height: 1px; background: var(--copper);
+}
+.page-title {
+  font-family: var(--display); font-weight: 500;  font-size: 44px; line-height: 1.05; letter-spacing: -1.2px;
+  margin-bottom: 16px; color: var(--ink); max-width: 700px;
+}
+.page-title em {
+  font-style: italic; font-weight: 400; color: var(--copper);}
+.page-sub {
+  font-size: 16px; color: var(--ink-soft); max-width: 600px;
+  line-height: 1.55;
+}
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--white); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 28px;
+  position: relative;
+}
+.card-eyebrow {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-fade);
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 18px;
+}
+
+/* ─── HERO SCHEMATIC ─── */
+.hero {
+  background: var(--white); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 0; margin: 32px 0 48px; overflow: hidden;
+  display: grid; grid-template-columns: 5fr 7fr;
+}
+.hero-text-side { padding: 40px 36px; border-right: 1px solid var(--rule); }
+.hero-meta {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-fade);
+  letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px;
+}
+.hero-headline {
+  font-family: var(--display);
+  font-weight: 400; font-variation-settings: 'opsz' 144;
+  font-size: 28px; line-height: 1.15; letter-spacing: -0.5px;
+  margin-bottom: 14px; color: var(--ink);
+}
+.hero-headline em { font-style: italic; color: var(--copper); }
+.hero-body { font-size: 13.5px; color: var(--ink-soft); line-height: 1.65; margin-bottom: 24px; }
+
+.hero-counters { display: flex; gap: 28px; }
+.counter-block {
+  display: flex; flex-direction: column;
+}
+.counter-num {
+  font-family: var(--display); font-weight: 500;  font-size: 36px; line-height: 1; color: var(--ink);
+  letter-spacing: -1px;
+}
+.counter-unit { font-family: var(--mono); font-size: 10px; color: var(--ink-fade); margin-top: 2px; letter-spacing: 0.5px; }
+.counter-label { font-size: 12px; color: var(--ink-mute); margin-top: 6px; }
+
+.hero-diagram-side {
+  padding: 24px; background:
+    linear-gradient(90deg, var(--rule-soft) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(0deg, var(--rule-soft) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--white);
+  position: relative;
+}
+.diagram-corner {
+  position: absolute; font-family: var(--mono); font-size: 9px;
+  color: var(--ink-fade); letter-spacing: 0.5px;
+}
+.diagram-corner.tl { top: 12px; left: 16px; }
+.diagram-corner.tr { top: 12px; right: 16px; }
+.diagram-corner.bl { bottom: 12px; left: 16px; }
+.diagram-corner.br { bottom: 12px; right: 16px; }
+
+/* ─── STATS ROW ─── */
+.results-strip {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0; margin-bottom: 48px;
+  border: 1px solid var(--rule); border-radius: 4px;
+  background: var(--white);
+}
+.result-cell {
+  padding: 28px;
+  border-right: 1px solid var(--rule);
+  position: relative;
+}
+.result-cell:last-child { border-right: none; }
+.result-cell::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 0; height: 2px;
+  background: var(--copper); transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.result-cell.in-view::before { width: 100%; }
+
+.result-num {
+  font-family: var(--display); font-weight: 500;  font-size: 52px; line-height: 1; letter-spacing: -2px;
+  color: var(--ink); margin-bottom: 4px;
+  display: flex; align-items: baseline; gap: 4px;
+}
+.result-num span.suffix { font-size: 28px; color: var(--ink-mute); }
+.result-label {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+  letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px;
+}
+.result-meta {
+  font-size: 12.5px; color: var(--ink-soft); line-height: 1.45;
+}
+.result-meta strong { color: var(--ink); font-weight: 600; }
+
+/* ─── FAULT TYPE GLOSSARY ─── */
+.glossary { margin-bottom: 56px; }
+.glossary-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--rule);
+}
+.glossary-title {
+  font-family: var(--display); font-weight: 500;  font-size: 28px; letter-spacing: -0.5px;
+}
+.glossary-note {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-fade);
+  letter-spacing: 0.5px;
+}
+
+.fault-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 0;
+  border: 1px solid var(--rule); border-radius: 4px;
+  background: var(--white); overflow: hidden;
+}
+.fault-row {
+  display: grid; grid-template-columns: 60px 1fr;
+  padding: 22px 24px; border-bottom: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+  transition: background 0.2s;
+}
+.fault-row:hover { background: var(--paper-alt); }
+.fault-row:nth-child(2n) { border-right: none; }
+.fault-row:nth-last-child(-n+2) { border-bottom: none; }
+.fault-code {
+  font-family: var(--display); font-weight: 600;  font-size: 18px; letter-spacing: -0.5px;
+}
+.fault-code.code-normal { color: var(--moss); }
+.fault-code.code-hif { color: var(--warning); }
+.fault-code.code-lg, .fault-code.code-ll { color: var(--copper); }
+.fault-code.code-llg, .fault-code.code-lllg { color: var(--crimson); }
+
+.fault-content h4 {
+  font-family: var(--display); font-weight: 500; font-size: 16px;
+  letter-spacing: -0.2px; margin-bottom: 4px;
+}
+.fault-content p {
+  font-size: 13px; color: var(--ink-soft); line-height: 1.5;
+}
+.fault-content .stat {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+  margin-top: 6px; letter-spacing: 0.3px;
+}
+
+/* ─── FEATURE TABLE ─── */
+.features-block { margin-bottom: 56px; }
+.feature-table {
+  background: var(--white); border: 1px solid var(--rule); border-radius: 4px;
+  overflow: hidden;
+}
+.feature-table-row {
+  display: grid; grid-template-columns: 200px 1fr 120px;
+  padding: 18px 24px; border-bottom: 1px solid var(--rule);
+  align-items: center;
+  transition: background 0.2s;
+}
+.feature-table-row:last-child { border-bottom: none; }
+.feature-table-row:hover { background: var(--paper-alt); }
+.feature-tag {
+  font-family: var(--mono); font-size: 12px; color: var(--copper);
+  font-weight: 500;
+}
+.feature-desc { font-size: 13.5px; color: var(--ink-soft); }
+.feature-count-num {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-fade);
+  text-align: right;
+}
+
+/* ─── PREDICT SECTION ─── */
+.predict-layout {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  align-items: start;
+}
+
+.form-group { margin-bottom: 22px; }
+.form-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.form-label-text {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-fade);
+  letter-spacing: 1.2px; text-transform: uppercase;
+}
+.form-label-hint {
+  font-size: 11px; color: var(--ink-mute); font-family: var(--body);
+}
+
+textarea, select, input {
+  width: 100%; background: var(--paper-alt); border: 1px solid var(--rule);
+  border-radius: 3px; color: var(--ink); font-family: var(--mono);
+  font-size: 12px; padding: 12px 14px; outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  resize: vertical; line-height: 1.5;
+}
+textarea:focus, select:focus, input:focus {
+  border-color: var(--ink); background: var(--white);
+}
+textarea::placeholder { color: var(--ink-fade); }
+
+.feature-counter {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; font-size: 11px; font-family: var(--mono);
+  color: var(--ink-mute);
+}
+.counter-bar {
+  flex: 1; height: 2px; background: var(--rule); border-radius: 1px;
+  overflow: hidden;
+}
+.counter-fill {
+  height: 100%; background: var(--copper); width: 0%;
+  transition: width 0.3s, background 0.3s;
+}
+.counter-fill.complete { background: var(--moss); }
+
+.model-row { display: flex; gap: 8px; }
+.model-pill {
+  flex: 1; padding: 10px 12px; border: 1px solid var(--rule);
+  background: var(--paper-alt); color: var(--ink-soft);
+  font-family: var(--body); font-size: 12.5px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; text-align: center;
+  border-radius: 3px; user-select: none;
+}
+.model-pill:hover { border-color: var(--ink-soft); color: var(--ink); }
+.model-pill.active {
+  border-color: var(--ink); background: var(--ink); color: var(--paper);
+}
+.model-pill small {
+  display: block; font-size: 10px; font-family: var(--mono);
+  margin-top: 2px; opacity: 0.6; letter-spacing: 0.3px;
+}
+
+.toggle-row {
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+  padding: 12px 0; user-select: none;
+}
+.toggle-switch {
+  width: 36px; height: 20px; border-radius: 100px; background: var(--rule);
+  position: relative; transition: background 0.25s; flex-shrink: 0;
+}
+.toggle-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%; background: var(--white);
+  transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.toggle-switch.on { background: var(--ink); }
+.toggle-switch.on::after { left: 18px; }
+.toggle-text { font-size: 13px; color: var(--ink-soft); }
+
+.btn-primary {
+  width: 100%; padding: 14px 24px; background: var(--copper); color: var(--white);
+  font-family: var(--body); font-size: 14px; font-weight: 600;
+  border: none; border-radius: 3px; cursor: pointer;
+  transition: all 0.15s; letter-spacing: 0.2px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  position: relative; overflow: hidden;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--copper-dim); transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(181,72,30,0.25);
+}
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary::after {
+  content: '→'; transition: transform 0.2s;
+}
+.btn-primary:hover:not(:disabled)::after { transform: translateX(3px); }
+
+.btn-ghost {
+  width: 100%; padding: 9px 14px; background: transparent;
+  border: 1px solid var(--rule); color: var(--ink-soft);
+  font-family: var(--mono); font-size: 11px; cursor: pointer;
+  border-radius: 3px; transition: all 0.15s; text-align: left;
+  letter-spacing: 0.3px;
+}
+.btn-ghost:hover { border-color: var(--ink); color: var(--ink); background: var(--paper-alt); }
+
+.divider-rule {
+  height: 1px; background: var(--rule); margin: 24px 0;
+  position: relative;
+}
+.divider-rule-label {
+  position: absolute; top: -7px; left: 50%; transform: translateX(-50%);
+  background: var(--white); padding: 0 12px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-fade);
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+/* ─── RESULTS ─── */
+.result-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 80px 20px; gap: 16px;
+}
+.result-empty-orb {
+  width: 80px; height: 80px; border-radius: 50%;
+  border: 1px dashed var(--rule);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 20px; color: var(--ink-fade);}
+.result-empty p {
+  font-size: 13.5px; color: var(--ink-mute); text-align: center;
+  max-width: 240px; line-height: 1.5;
+}
+
+.result-classification {
+  padding: 24px 0 0;
+}
+.classification-eyebrow {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-fade);
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px;
+}
+.classification-name {
+  font-family: var(--display); font-weight: 500;  font-size: 38px; letter-spacing: -1px; line-height: 1.05;
+  margin-bottom: 6px;
+}
+.classification-name.normal { color: var(--moss); }
+.classification-name.hif { color: var(--warning); }
+.classification-name.lg, .classification-name.ll { color: var(--copper); }
+.classification-name.llg, .classification-name.lllg { color: var(--crimson); }
+
+.classification-desc {
+  font-size: 13px; color: var(--ink-soft); margin-bottom: 24px; max-width: 360px;
+}
+
+.prob-section { margin-bottom: 28px; }
+.prob-row {
+  display: grid; grid-template-columns: 80px 1fr 60px;
+  align-items: center; padding: 8px 0; gap: 12px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.prob-row:last-child { border-bottom: none; }
+.prob-label {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-soft);
+  letter-spacing: 0.5px;
+}
+.prob-bar-bg {
+  height: 5px; background: var(--rule-soft); border-radius: 100px;
+  overflow: hidden;
+}
+.prob-bar-fill {
+  height: 100%; background: var(--ink-fade); border-radius: 100px;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.prob-bar-fill.top { background: var(--copper); }
+.prob-pct {
+  font-family: var(--mono); font-size: 11px; color: var(--ink);
+  text-align: right;
+}
+
+.location-section {
+  padding: 20px 0; border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule); margin-bottom: 20px;
+}
+.location-eyebrow {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-fade);
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px;
+}
+.location-display {
+  display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px;
+}
+.location-bus-num {
+  font-family: var(--display); font-weight: 600;  font-size: 48px; line-height: 1; letter-spacing: -2px; color: var(--ink);
+}
+.location-confidence {
+  font-family: var(--mono); font-size: 12px; color: var(--ink-mute);
+}
+.location-confidence strong { color: var(--ink); font-weight: 500; }
+
+.alt-locations { font-family: var(--mono); font-size: 11px; color: var(--ink-mute); }
+.alt-locations span:not(:last-child)::after {
+  content: ' · '; color: var(--ink-fade);
+}
+
+.meta-footer {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-fade);
+  margin-top: 16px; letter-spacing: 0.3px;
+}
+
+/* ─── BATCH ─── */
+.dropzone {
+  border: 1.5px dashed var(--rule); border-radius: 4px; padding: 48px 24px;
+  text-align: center; cursor: pointer; transition: all 0.2s;
+  background: var(--paper-alt);
+}
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--copper); background: var(--copper-fade);
+}
+.dropzone-mark {
+  width: 48px; height: 48px; margin: 0 auto 12px;
+  border: 1px solid var(--rule); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 18px; color: var(--ink-mute);
+}
+.dropzone p {
+  font-size: 14px; color: var(--ink-soft); margin-bottom: 4px;
+  font-family: var(--body);
+}
+.dropzone small {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-fade);
+  letter-spacing: 0.3px;
+}
+#batch-file-input { display: none; }
+
+.file-info {
+  display: none; padding: 12px 16px; background: var(--paper-alt);
+  border: 1px solid var(--rule); border-radius: 3px;
+  font-family: var(--mono); font-size: 12px; margin-bottom: 16px;
+}
+.file-info.visible { display: block; }
+.file-info-name { color: var(--ink); }
+.file-info-count { color: var(--ink-mute); margin-left: 12px; }
+
+.progress-wrap { display: none; margin-top: 14px; }
+.progress-wrap.visible { display: block; }
+.progress-text {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+  margin-bottom: 6px;
+}
+.progress-bar {
+  height: 3px; background: var(--rule); border-radius: 100px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--copper); width: 0%;
+  transition: width 0.3s;
+}
+
+.batch-results {
+  font-family: var(--mono); font-size: 12px;
+}
+.batch-summary {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--rule);
+}
+.batch-tag {
+  padding: 4px 10px; border-radius: 100px; font-size: 11px;
+  font-family: var(--body); font-weight: 500;
+}
+.tag-normal { background: var(--moss-fade); color: var(--moss); }
+.tag-hif { background: var(--warning-fade); color: var(--warning); }
+.tag-lg, .tag-ll { background: var(--copper-fade); color: var(--copper); }
+.tag-llg, .tag-lllg { background: var(--crimson-fade); color: var(--crimson); }
+
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 12px;
+}
+th {
+  text-align: left; padding: 10px 12px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--ink-fade);
+  border-bottom: 1px solid var(--rule); font-weight: 500;
+}
+td {
+  padding: 10px 12px; border-bottom: 1px solid var(--rule-soft);
+  color: var(--ink-soft);
+}
+tr:hover td { background: var(--paper-alt); }
+
+.btn-secondary {
+  padding: 8px 16px; background: transparent; border: 1px solid var(--rule);
+  color: var(--ink-soft); font-family: var(--body); font-size: 12px;
+  font-weight: 500; border-radius: 3px; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-secondary:hover { border-color: var(--ink); color: var(--ink); }
+
+/* ─── COMPARISON ─── */
+.compare-card { margin-bottom: 32px; }
+.compare-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-bottom: 18px; border-bottom: 1px solid var(--rule); margin-bottom: 24px;
+}
+.compare-task-name {
+  font-family: var(--display); font-weight: 500;  font-size: 22px; letter-spacing: -0.5px;
+}
+.compare-task-name em { font-style: italic; color: var(--copper); }
+.compare-meta {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-fade);
+  letter-spacing: 0.5px;
+}
+
+.model-card-row {
+  display: grid; grid-template-columns: 240px 1fr 100px;
+  align-items: center; padding: 20px 0;
+  border-bottom: 1px solid var(--rule-soft); gap: 24px;
+}
+.model-card-row:last-child { border-bottom: none; }
+
+.model-info-block { display: flex; flex-direction: column; }
+.model-info-name {
+  font-family: var(--display); font-weight: 500; font-size: 18px;
+  letter-spacing: -0.3px; margin-bottom: 2px;
+  display: flex; align-items: center; gap: 10px;
+}
+.model-info-type {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute);
+  letter-spacing: 0.3px;
+}
+.recommended-mark {
+  font-family: var(--mono); font-size: 9px; color: var(--copper);
+  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500;
+  padding: 2px 6px; border: 1px solid var(--copper); border-radius: 2px;
+}
+
+.accuracy-vis {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.accuracy-vis-bar {
+  height: 6px; background: var(--rule-soft); border-radius: 100px;
+  overflow: hidden; position: relative;
+}
+.accuracy-vis-fill {
+  height: 100%; background: var(--ink); border-radius: 100px;
+  transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.accuracy-vis-fill.best { background: var(--copper); }
+.accuracy-vis-labels {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-fade);
+}
+
+.accuracy-pct {
+  font-family: var(--display); font-weight: 600;  font-size: 24px; letter-spacing: -0.5px; text-align: right;
+}
+.accuracy-pct.best { color: var(--copper); }
+
+.finding-card {
+  background: var(--ink); color: var(--paper); padding: 36px 40px;
+  border-radius: 4px; position: relative; overflow: hidden;
+}
+.finding-card::before {
+  content: '';
+  position: absolute; top: 0; right: 0; width: 200px; height: 200px;
+  background: radial-gradient(circle at center, rgba(181,72,30,0.15) 0%, transparent 70%);
+}
+.finding-eyebrow {
+  font-family: var(--mono); font-size: 10px; color: var(--copper);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px;
+  position: relative; z-index: 1;
+}
+.finding-text {
+  font-family: var(--display); font-weight: 400; font-size: 19px;
+  line-height: 1.55; letter-spacing: -0.2px; position: relative; z-index: 1;
+  max-width: 720px;
+}
+.finding-text em { font-style: italic; color: var(--copper-fade); }
+.finding-text strong { font-weight: 600; }
+
+/* ─── ABOUT ─── */
+.about-layout {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+  margin-bottom: 56px;
+}
+
+.method-list { display: flex; flex-direction: column; gap: 0; }
+.method-item {
+  display: grid; grid-template-columns: 32px 1fr;
+  gap: 16px; padding: 24px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.method-item:last-child { border-bottom: none; }
+.method-marker {
+  font-family: var(--mono); font-size: 11px; color: var(--copper);
+  padding-top: 4px; letter-spacing: 0.5px;
+}
+.method-content h4 {
+  font-family: var(--display); font-weight: 500; font-size: 17px;
+  letter-spacing: -0.3px; margin-bottom: 6px;
+}
+.method-content p {
+  font-size: 13.5px; color: var(--ink-soft); line-height: 1.6;
+}
+
+.feature-group-list { display: flex; flex-direction: column; gap: 18px; }
+.feature-group-item { padding: 16px 18px; background: var(--white); border: 1px solid var(--rule); border-radius: 4px; }
+.feature-group-item h4 {
+  font-family: var(--display); font-weight: 500; font-size: 15px;
+  margin-bottom: 4px; display: flex; align-items: center; gap: 10px;
+}
+.feature-group-chip {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+  color: var(--copper); padding: 2px 8px; background: var(--copper-fade);
+  border-radius: 100px; letter-spacing: 0.3px;
+}
+.feature-group-item p {
+  font-size: 12.5px; color: var(--ink-soft); line-height: 1.55;
+}
+
+.limitations-card {
+  background: var(--paper-alt); border-left: 3px solid var(--warning);
+  padding: 24px 28px; border-radius: 0 3px 3px 0;
+}
+.limitations-card .card-eyebrow { color: var(--warning); }
+.limitations-text {
+  font-size: 14px; color: var(--ink-soft); line-height: 1.65;
+}
+
+/* ─── SPINNER ─── */
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 1.5px solid rgba(255,255,255,0.35); border-top-color: white;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── TOAST ─── */
+.toast {
+  position: fixed; bottom: 28px; right: 28px;
+  background: var(--ink); color: var(--paper);
+  padding: 12px 18px; border-radius: 3px;
+  font-size: 13px; z-index: 999; max-width: 320px;
+  font-family: var(--body);
+  transform: translateY(100px); opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+  box-shadow: 0 8px 24px rgba(14,31,61,0.15);
+  display: flex; align-items: center; gap: 10px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--moss); }
+.toast.error .toast-dot { background: var(--crimson); }
+
+/* ─── SHAP MODAL ─── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(14,31,61,0.4); backdrop-filter: blur(8px);
+  z-index: 200; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-bg.visible { display: flex; }
+.modal-content {
+  background: var(--white); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 32px 36px;
+  width: 620px; max-width: 92vw; max-height: 86vh; overflow-y: auto;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--rule);
+}
+.modal-title {
+  font-family: var(--display); font-weight: 500; font-size: 24px;
+  font-variation-settings: 'opsz' 144; letter-spacing: -0.5px;
+}
+.modal-close {
+  background: none; border: none; color: var(--ink-mute);
+  font-size: 22px; cursor: pointer; padding: 0; line-height: 1;
+  transition: color 0.15s;
+}
+.modal-close:hover { color: var(--ink); }
+
+.shap-block { margin-bottom: 28px; }
+.shap-block:last-child { margin-bottom: 0; }
+.shap-block-title {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-fade);
+  letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 16px;
+}
+.shap-bar-item {
+  display: grid; grid-template-columns: 130px 1fr 70px;
+  align-items: center; gap: 14px; margin-bottom: 8px;
+}
+.shap-feat {
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft);
+}
+.shap-bar-track {
+  position: relative; height: 18px;
+  display: flex; align-items: center;
+}
+.shap-bar-axis {
+  position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+  background: var(--rule);
+}
+.shap-bar-fill {
+  position: absolute; height: 8px; top: 5px; border-radius: 2px;
+  transition: width 0.6s ease;
+}
+.shap-bar-fill.pos { left: 50%; background: var(--moss); }
+.shap-bar-fill.neg { right: 50%; background: var(--crimson); }
+.shap-value {
+  font-family: var(--mono); font-size: 11px; text-align: right;
+}
+.shap-value.pos { color: var(--moss); }
+.shap-value.neg { color: var(--crimson); }
+
+/* ─── PULSE ANIMATIONS for diagram ─── */
+@keyframes flow {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+.flow-line {
+  stroke-dasharray: 4 4;
+  animation: flow 2.5s linear infinite;
+}
+.flow-line.b1 { animation-delay: 0s; }
+.flow-line.b2 { animation-delay: 0.5s; }
+.flow-line.b3 { animation-delay: 1s; }
+.flow-line.b4 { animation-delay: 1.5s; }
+
+@keyframes blink-bus {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+.bus-node {
+  animation: blink-bus 4s ease-in-out infinite;
+}
+.bus-node.b2 { animation-delay: 0.2s; }
+.bus-node.b3 { animation-delay: 0.8s; }
+.bus-node.b4 { animation-delay: 1.4s; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1024px) {
+  .sidebar { width: 240px; }
+  .main { margin-left: 240px; }
+  .section { padding: 40px 32px 60px; }
+  .predict-layout, .about-layout, .hero { grid-template-columns: 1fr; }
+  .hero-text-side { border-right: none; border-bottom: 1px solid var(--rule); }
+  .fault-grid { grid-template-columns: 1fr; }
+  .fault-row { border-right: none; }
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">
+      <span class="brand-mark-icon"></span>
+      <span class="brand-name">FaultSense</span>
+    </div>
+    <div class="brand-sub">IEEE 33-Bus Diagnostics</div>
+    <div class="api-pill">
+      <span class="status-orb" id="status-orb"></span>
+      <span id="status-text">Connecting</span>
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-eyebrow">Workspace</div>
+    <div class="nav-item active" onclick="showSection('overview', this)">
+      <span class="nav-num">01</span> Overview
+    </div>
+    <div class="nav-item" onclick="showSection('predict', this)">
+      <span class="nav-num">02</span> Predict
+    </div>
+    <div class="nav-item" onclick="showSection('batch', this)">
+      <span class="nav-num">03</span> Batch
+    </div>
+    <div class="nav-item" onclick="showSection('compare', this)">
+      <span class="nav-num">04</span> Models
+    </div>
+    <div class="nav-item" onclick="showSection('about', this)">
+      <span class="nav-num">05</span> Method
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <a href="http://localhost:8000/docs" target="_blank">Open API docs ↗</a>
+    <a href="https://github.com/Maleeka14/Fault-detection-System" target="_blank">View repository ↗</a>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- ═══ OVERVIEW ═══ -->
+  <section class="section active" id="section-overview">
+    <div class="page-eyebrow">Distribution grid diagnostics</div>
+    <h1 class="page-title">Classify faults and locate them on a <em>33-bus radial feeder</em>.</h1>
+    <p class="page-sub">Three machine learning models trained on physics-based simulation data identify the fault type and predict its location across the network within milliseconds.</p>
+
+    <div class="hero">
+      <div class="hero-text-side">
+        <div class="hero-meta">Detection · Classification · Localization</div>
+        <h2 class="hero-headline">When a fault occurs, every bus feels it — <em>but only some carry the signature</em>.</h2>
+        <p class="hero-body">The dataset captures voltage magnitude, voltage angle, and the three symmetrical components at all 33 buses for every simulated fault scenario. Models learn which combinations of bus measurements uniquely identify each fault type and its origin.</p>
+        <div class="hero-counters">
+          <div class="counter-block">
+            <div class="counter-num" data-target="1920" data-suffix="">0</div>
+            <div class="counter-unit">scenarios</div>
+            <div class="counter-label">Balanced across six fault classes</div>
+          </div>
+          <div class="counter-block">
+            <div class="counter-num" data-target="165" data-suffix="">0</div>
+            <div class="counter-unit">features per scenario</div>
+            <div class="counter-label">Voltage and sequence components</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-diagram-side">
+        <div class="diagram-corner tl">IEEE 33-BUS</div>
+        <div class="diagram-corner tr">RADIAL FEEDER</div>
+        <div class="diagram-corner bl">DRWG · 001</div>
+        <div class="diagram-corner br">12.66 kV</div>
+        <svg viewBox="0 0 600 320" width="100%" height="auto" style="display:block;">
+          <!-- Substation -->
+          <rect x="20" y="150" width="32" height="28" fill="none" stroke="#0E1F3D" stroke-width="1.2"/>
+          <text x="36" y="195" font-family="JetBrains Mono" font-size="9" fill="#6A6F7D" text-anchor="middle">SS</text>
+          <line x1="52" y1="164" x2="80" y2="164" stroke="#0E1F3D" stroke-width="1.2"/>
+
+          <!-- Main feeder buses (1-18) -->
+          <g id="main-feeder">
+            <line class="flow-line b1" x1="80" y1="164" x2="540" y2="164" stroke="#B5481E" stroke-width="1" fill="none" opacity="0.7"/>
+            <!-- Bus nodes along main -->
+            <circle cx="80" cy="164" r="4" fill="#0E1F3D" class="bus-node"/>
+            <text x="80" y="148" font-family="JetBrains Mono" font-size="8" fill="#6A6F7D" text-anchor="middle">B1</text>
+            <circle cx="110" cy="164" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="140" cy="164" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="170" cy="164" r="3" fill="#0E1F3D" class="bus-node b4"/>
+            <circle cx="200" cy="164" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="230" cy="164" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="260" cy="164" r="3" fill="#0E1F3D" class="bus-node b4"/>
+            <circle cx="290" cy="164" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="320" cy="164" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="350" cy="164" r="3" fill="#0E1F3D" class="bus-node b4"/>
+            <circle cx="380" cy="164" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="410" cy="164" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="440" cy="164" r="3" fill="#0E1F3D" class="bus-node b4"/>
+            <circle cx="470" cy="164" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="500" cy="164" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="540" cy="164" r="4" fill="#0E1F3D" class="bus-node b4"/>
+            <text x="540" y="148" font-family="JetBrains Mono" font-size="8" fill="#6A6F7D" text-anchor="middle">B18</text>
+          </g>
+
+          <!-- Lateral branch 1 (buses 19-22) -->
+          <g>
+            <line class="flow-line b2" x1="110" y1="164" x2="110" y2="80" stroke="#B5481E" stroke-width="1" opacity="0.5"/>
+            <line class="flow-line b3" x1="110" y1="80" x2="240" y2="80" stroke="#B5481E" stroke-width="1" opacity="0.5"/>
+            <circle cx="110" cy="80" r="3" fill="#0E1F3D" class="bus-node"/>
+            <text x="110" y="68" font-family="JetBrains Mono" font-size="8" fill="#6A6F7D" text-anchor="middle">B19</text>
+            <circle cx="150" cy="80" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="190" cy="80" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="240" cy="80" r="3" fill="#0E1F3D" class="bus-node b4"/>
+            <text x="240" y="68" font-family="JetBrains Mono" font-size="8" fill="#6A6F7D" text-anchor="middle">B22</text>
+          </g>
+
+          <!-- Lateral branch 2 (buses 23-25) -->
+          <g>
+            <line class="flow-line b3" x1="140" y1="164" x2="140" y2="240" stroke="#B5481E" stroke-width="1" opacity="0.5"/>
+            <line class="flow-line b4" x1="140" y1="240" x2="240" y2="240" stroke="#B5481E" stroke-width="1" opacity="0.5"/>
+            <circle cx="140" cy="240" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <text x="140" y="258" font-family="JetBrains Mono" font-size="8" fill="#6A6F7D" text-anchor="middle">B23</text>
+            <circle cx="190" cy="240" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="240" cy="240" r="3" fill="#0E1F3D" class="bus-node b4"/>
+            <text x="240" y="258" font-family="JetBrains Mono" font-size="8" fill="#6A6F7D" text-anchor="middle">B25</text>
+          </g>
+
+          <!-- Lateral branch 3 (buses 26-33) -->
+          <g>
+            <line class="flow-line b1" x1="200" y1="164" x2="200" y2="280" stroke="#B5481E" stroke-width="1" opacity="0.5"/>
+            <line class="flow-line b2" x1="200" y1="280" x2="540" y2="280" stroke="#B5481E" stroke-width="1" opacity="0.5"/>
+            <circle cx="200" cy="280" r="3" fill="#0E1F3D" class="bus-node"/>
+            <text x="200" y="298" font-family="JetBrains Mono" font-size="8" fill="#6A6F7D" text-anchor="middle">B26</text>
+            <circle cx="240" cy="280" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="280" cy="280" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="320" cy="280" r="3" fill="#0E1F3D" class="bus-node b4"/>
+            <circle cx="360" cy="280" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="400" cy="280" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <circle cx="450" cy="280" r="3" fill="#0E1F3D" class="bus-node b4"/>
+            <circle cx="500" cy="280" r="3" fill="#0E1F3D" class="bus-node b2"/>
+            <circle cx="540" cy="280" r="3" fill="#0E1F3D" class="bus-node b3"/>
+            <text x="540" y="298" font-family="JetBrains Mono" font-size="8" fill="#6A6F7D" text-anchor="middle">B33</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="results-strip">
+      <div class="result-cell in-view">
+        <div class="result-num"><span data-target="99.48" data-suffix="">0</span><span class="suffix">%</span></div>
+        <div class="result-label">Type accuracy</div>
+        <div class="result-meta">Random Forest correctly classifies six fault categories. Held-out test set, <strong>384 samples</strong>.</div>
+      </div>
+      <div class="result-cell in-view" style="transition-delay: 0.1s">
+        <div class="result-num"><span data-target="91.87" data-suffix="">0</span><span class="suffix">%</span></div>
+        <div class="result-label">Location accuracy</div>
+        <div class="result-meta">Neural network identifies the faulted bus from 32 possibilities. Top-3 prediction reaches <strong>98%</strong>.</div>
+      </div>
+      <div class="result-cell in-view" style="transition-delay: 0.2s">
+        <div class="result-num"><span data-target="42" data-suffix="">0</span><span class="suffix">ms</span></div>
+        <div class="result-label">Inference latency</div>
+        <div class="result-meta">End-to-end prediction time including feature scaling and SHAP attribution lookup.</div>
+      </div>
+    </div>
+
+    <div class="glossary">
+      <div class="glossary-header">
+        <div class="glossary-title">Fault categories</div>
+        <div class="glossary-note">Symbols follow IEEE convention · A, B, C denote phase conductors</div>
+      </div>
+      <div class="fault-grid">
+        <div class="fault-row">
+          <div class="fault-code code-normal">—</div>
+          <div class="fault-content">
+            <h4>Normal operation</h4>
+            <p>Grid within design parameters. No fault present. Voltage profile reflects load distribution and line impedance.</p>
+            <div class="stat">Baseline · 320 scenarios · varied loading 55–145%</div>
+          </div>
+        </div>
+        <div class="fault-row">
+          <div class="fault-code code-lg">LG</div>
+          <div class="fault-content">
+            <h4>Single line-to-ground</h4>
+            <p>One phase conductor contacts earth through fault impedance. Most common distribution fault, accounting for roughly 70–80% of all events.</p>
+            <div class="stat">Rf range · 0 to 1.0 pu</div>
+          </div>
+        </div>
+        <div class="fault-row">
+          <div class="fault-code code-ll">LL</div>
+          <div class="fault-content">
+            <h4>Line-to-line</h4>
+            <p>Two phase conductors short directly without involving ground. Common in storm conditions when phase conductors swing together.</p>
+            <div class="stat">Rf range · 0 to 1.0 pu · phases B and C</div>
+          </div>
+        </div>
+        <div class="fault-row">
+          <div class="fault-code code-llg">LLG</div>
+          <div class="fault-content">
+            <h4>Double line-to-ground</h4>
+            <p>Two phase conductors simultaneously fault to ground. Common from fallen tree branches contacting multiple conductors.</p>
+            <div class="stat">Rf range · 0 to 1.0 pu · phases B and C</div>
+          </div>
+        </div>
+        <div class="fault-row">
+          <div class="fault-code code-lllg">LLLG</div>
+          <div class="fault-content">
+            <h4>Three-phase-to-ground</h4>
+            <p>All three phase conductors faulted to ground simultaneously. Rare but the most severe condition — symmetrical fault with the highest fault current.</p>
+            <div class="stat">Rf range · 0 to 1.0 pu · balanced</div>
+          </div>
+        </div>
+        <div class="fault-row">
+          <div class="fault-code code-hif">HIF</div>
+          <div class="fault-content">
+            <h4>High-impedance fault</h4>
+            <p>Fault current limited by very high impedance — vegetation, surface contact, or downed lines on dry ground. Conventional overcurrent protection often misses these.</p>
+            <div class="stat">Rf range · 2.0 to 2000 pu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="features-block">
+      <div class="glossary-header">
+        <div class="glossary-title">Input features</div>
+        <div class="glossary-note">All values in per-unit · referenced to 12.66 kV base</div>
+      </div>
+      <div class="feature-table">
+        <div class="feature-table-row">
+          <div class="feature-tag">V_bus[1..33]</div>
+          <div class="feature-desc">Voltage magnitude at each bus. Drops during faults proportional to fault severity and electrical distance.</div>
+          <div class="feature-count-num">33 features</div>
+        </div>
+        <div class="feature-table-row">
+          <div class="feature-tag">Angle_bus[1..33]</div>
+          <div class="feature-desc">Phase angle at each bus. Critical for HIF detection where magnitude changes are subtle but angle shifts are measurable.</div>
+          <div class="feature-count-num">33 features</div>
+        </div>
+        <div class="feature-table-row">
+          <div class="feature-tag">V0_bus[1..33]</div>
+          <div class="feature-desc">Zero-sequence component. Rises during ground faults; theoretically zero for balanced operation.</div>
+          <div class="feature-count-num">33 features</div>
+        </div>
+        <div class="feature-table-row">
+          <div class="feature-tag">V1_bus[1..33]</div>
+          <div class="feature-desc">Positive-sequence component. The fundamental operating voltage, depressed during all fault types.</div>
+          <div class="feature-count-num">33 features</div>
+        </div>
+        <div class="feature-table-row">
+          <div class="feature-tag">V2_bus[1..33]</div>
+          <div class="feature-desc">Negative-sequence component. Indicates unbalance. Rises during LG, LL, LLG faults; near zero during balanced conditions.</div>
+          <div class="feature-count-num">33 features</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PREDICT ═══ -->
+  <section class="section" id="section-predict">
+    <div class="page-eyebrow">Single prediction</div>
+    <h1 class="page-title">Diagnose one scenario at a time.</h1>
+    <p class="page-sub">Paste 165 comma-separated voltage measurements and receive a fault classification, location estimate, and optional SHAP attribution.</p>
+
+    <div style="margin-top: 40px;"></div>
+
+    <div class="predict-layout">
+      <div class="card">
+        <div class="card-eyebrow">Measurement input</div>
+
+        <div class="form-group">
+          <div class="form-label">
+            <span class="form-label-text">Feature vector</span>
+            <span class="form-label-hint">V, Angle, V0, V1, V2 per bus</span>
+          </div>
+          <textarea id="feature-input" rows="8" placeholder="1.0, 0.998, 0.991, 0.987, 0.983, ..." oninput="onFeatureInput()"></textarea>
+          <div class="feature-counter">
+            <span id="feature-count-text">0 of 165</span>
+            <div class="counter-bar"><div class="counter-fill" id="counter-fill"></div></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">
+            <span class="form-label-text">Model</span>
+          </div>
+          <div class="model-row">
+            <div class="model-pill active" onclick="selectModel('rf', this)">
+              Random Forest
+              <small>200 trees</small>
+            </div>
+            <div class="model-pill" onclick="selectModel('xgb', this)">
+              XGBoost
+              <small>300 trees</small>
+            </div>
+            <div class="model-pill" onclick="selectModel('ann', this)">
+              Neural Net
+              <small>256·128·64</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="toggle-row" onclick="toggleShap()">
+          <div class="toggle-switch" id="shap-toggle"></div>
+          <span class="toggle-text">Include feature attribution (SHAP)</span>
+        </div>
+
+        <button class="btn-primary" id="predict-btn" onclick="runPrediction()" disabled>
+          <span id="predict-btn-text">Diagnose</span>
+        </button>
+
+        <div class="divider-rule">
+          <span class="divider-rule-label">or load sample</span>
+        </div>
+
+        <div style="display: grid; gap: 6px;">
+          <button class="btn-ghost" onclick="loadSample('lg')">→ Line-to-ground fault at Bus 2</button>
+          <button class="btn-ghost" onclick="loadSample('normal')">→ Normal operation, no fault</button>
+          <button class="btn-ghost" onclick="loadSample('lllg')">→ Three-phase fault at Bus 2</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">Diagnosis</div>
+        <div id="results-area">
+          <div class="result-empty">
+            <div class="result-empty-orb">⏵</div>
+            <p>Paste feature values and run a diagnosis to see classification results.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ BATCH ═══ -->
+  <section class="section" id="section-batch">
+    <div class="page-eyebrow">Batch prediction</div>
+    <h1 class="page-title">Process multiple scenarios at once.</h1>
+    <p class="page-sub">Upload a CSV of feature rows to receive classifications for the entire dataset. Results downloadable as CSV.</p>
+
+    <div style="margin-top: 40px;"></div>
+
+    <div class="predict-layout">
+      <div class="card">
+        <div class="card-eyebrow">CSV upload</div>
+
+        <div class="dropzone" id="batch-drop" onclick="document.getElementById('batch-file-input').click()"
+             ondragover="event.preventDefault();this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="handleDrop(event)">
+          <div class="dropzone-mark">↓</div>
+          <p>Drop CSV here or click to select</p>
+          <small>165 feature columns · up to 500 rows</small>
+        </div>
+        <input type="file" id="batch-file-input" accept=".csv" onchange="loadBatchFile(event)"/>
+
+        <div class="file-info" id="batch-file-info">
+          <span class="file-info-name" id="batch-filename"></span>
+          <span class="file-info-count" id="batch-rowcount"></span>
+        </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+          <div class="form-label">
+            <span class="form-label-text">Model</span>
+          </div>
+          <select id="batch-model">
+            <option value="rf">Random Forest — best for fault type</option>
+            <option value="ann">Neural network — best for fault location</option>
+            <option value="xgb">XGBoost</option>
+          </select>
+        </div>
+
+        <button class="btn-primary" id="batch-btn" onclick="runBatch()" disabled>
+          <span id="batch-btn-text">Run batch diagnosis</span>
+        </button>
+
+        <div class="progress-wrap" id="batch-progress">
+          <div class="progress-text" id="batch-progress-text">Processing</div>
+          <div class="progress-bar"><div class="progress-fill" id="batch-progress-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">Results</div>
+        <div id="batch-results">
+          <div class="result-empty">
+            <div class="result-empty-orb">⊟</div>
+            <p>Upload a CSV file to process multiple scenarios at once.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ COMPARE ═══ -->
+  <section class="section" id="section-compare">
+    <div class="page-eyebrow">Model comparison</div>
+    <h1 class="page-title">Three models, two tasks, <em>different strengths</em>.</h1>
+    <p class="page-sub">Performance varies by task. Tree-based models dominate fault type classification while the neural network leads location prediction.</p>
+
+    <div style="margin-top: 40px;"></div>
+
+    <div class="card compare-card">
+      <div class="compare-header">
+        <div class="compare-task-name">Fault type — <em>6-class classification</em></div>
+        <div class="compare-meta">384 test samples · macro-F1 reported</div>
+      </div>
+
+      <div class="model-card-row">
+        <div class="model-info-block">
+          <div class="model-info-name">Random Forest <span class="recommended-mark">Recommended</span></div>
+          <div class="model-info-type">Ensemble · 200 decision trees · class-balanced</div>
+        </div>
+        <div class="accuracy-vis">
+          <div class="accuracy-vis-bar"><div class="accuracy-vis-fill best" style="width: 99.48%"></div></div>
+          <div class="accuracy-vis-labels"><span>0%</span><span>100%</span></div>
+        </div>
+        <div class="accuracy-pct best">99.48%</div>
+      </div>
+
+      <div class="model-card-row">
+        <div class="model-info-block">
+          <div class="model-info-name">XGBoost</div>
+          <div class="model-info-type">Gradient boosting · 300 trees · learning rate 0.1</div>
+        </div>
+        <div class="accuracy-vis">
+          <div class="accuracy-vis-bar"><div class="accuracy-vis-fill" style="width: 99.43%"></div></div>
+          <div class="accuracy-vis-labels"><span>0%</span><span>100%</span></div>
+        </div>
+        <div class="accuracy-pct">99.43%</div>
+      </div>
+
+      <div class="model-card-row">
+        <div class="model-info-block">
+          <div class="model-info-name">Neural network</div>
+          <div class="model-info-type">Dense feedforward · 256→128→64 · dropout 0.3</div>
+        </div>
+        <div class="accuracy-vis">
+          <div class="accuracy-vis-bar"><div class="accuracy-vis-fill" style="width: 93.49%"></div></div>
+          <div class="accuracy-vis-labels"><span>0%</span><span>100%</span></div>
+        </div>
+        <div class="accuracy-pct">93.49%</div>
+      </div>
+    </div>
+
+    <div class="card compare-card">
+      <div class="compare-header">
+        <div class="compare-task-name">Fault location — <em>32-bus localization</em></div>
+        <div class="compare-meta">320 test samples · macro-F1 reported</div>
+      </div>
+
+      <div class="model-card-row">
+        <div class="model-info-block">
+          <div class="model-info-name">Neural network <span class="recommended-mark">Recommended</span></div>
+          <div class="model-info-type">Dense feedforward · 256→128→64 · dropout 0.3</div>
+        </div>
+        <div class="accuracy-vis">
+          <div class="accuracy-vis-bar"><div class="accuracy-vis-fill best" style="width: 91.87%"></div></div>
+          <div class="accuracy-vis-labels"><span>0%</span><span>100%</span></div>
+        </div>
+        <div class="accuracy-pct best">91.87%</div>
+      </div>
+
+      <div class="model-card-row">
+        <div class="model-info-block">
+          <div class="model-info-name">Random Forest</div>
+          <div class="model-info-type">Ensemble · 200 decision trees · class-balanced</div>
+        </div>
+        <div class="accuracy-vis">
+          <div class="accuracy-vis-bar"><div class="accuracy-vis-fill" style="width: 88.75%"></div></div>
+          <div class="accuracy-vis-labels"><span>0%</span><span>100%</span></div>
+        </div>
+        <div class="accuracy-pct">88.75%</div>
+      </div>
+
+      <div class="model-card-row">
+        <div class="model-info-block">
+          <div class="model-info-name">XGBoost</div>
+          <div class="model-info-type">Gradient boosting · 300 trees · learning rate 0.1</div>
+        </div>
+        <div class="accuracy-vis">
+          <div class="accuracy-vis-bar"><div class="accuracy-vis-fill" style="width: 87.81%"></div></div>
+          <div class="accuracy-vis-labels"><span>0%</span><span>100%</span></div>
+        </div>
+        <div class="accuracy-pct">87.81%</div>
+      </div>
+    </div>
+
+    <div class="finding-card">
+      <div class="finding-eyebrow">What this tells us</div>
+      <p class="finding-text">
+        Fault <em>type</em> boundaries are sharp and tree-separable — ensemble methods reach near-perfect accuracy.
+        Fault <em>location</em> is a continuous spatial problem where the neural network's representation learning 
+        produces the cleanest decision surface. SHAP attribution confirms the models rely on physically meaningful 
+        features: <strong>zero-sequence components for ground faults</strong>, <strong>negative-sequence for unbalanced faults</strong>, 
+        and <strong>voltage angles for high-impedance detection</strong>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ ABOUT ═══ -->
+  <section class="section" id="section-about">
+    <div class="page-eyebrow">Method</div>
+    <h1 class="page-title">How the pipeline works.</h1>
+    <p class="page-sub">From IEEE 33-bus simulation through sequence-network fault analysis to a trained classifier — every step is reproducible and grounded in classical power systems theory.</p>
+
+    <div style="margin-top: 40px;"></div>
+
+    <div class="about-layout">
+      <div class="card">
+        <div class="card-eyebrow">Pipeline</div>
+        <div class="method-list">
+          <div class="method-item">
+            <div class="method-marker">01</div>
+            <div class="method-content">
+              <h4>IEEE 33-bus network</h4>
+              <p>The Baran and Wu radial distribution feeder — 33 buses, 32 branches, 12.66 kV line-to-line, 3.715 MW total load. A widely cited benchmark in distribution research.</p>
+            </div>
+          </div>
+          <div class="method-item">
+            <div class="method-marker">02</div>
+            <div class="method-content">
+              <h4>Sequence-network fault analysis</h4>
+              <p>Faults injected through Y-bus matrix modification using symmetrical components theory. Positive, negative, and zero-sequence networks solved for each scenario based on the fault type.</p>
+            </div>
+          </div>
+          <div class="method-item">
+            <div class="method-marker">03</div>
+            <div class="method-content">
+              <h4>Backward-forward sweep</h4>
+              <p>Pre-fault voltages computed via radial distribution load flow with tolerance 1e-10. Post-fault voltages derived from sequence network equations and converted to phase values.</p>
+            </div>
+          </div>
+          <div class="method-item">
+            <div class="method-marker">04</div>
+            <div class="method-content">
+              <h4>Balanced training set</h4>
+              <p>Exactly 320 scenarios per class. Normal operation rows generated across 320 varied loading conditions (55–145% of base) to capture realistic operating diversity.</p>
+            </div>
+          </div>
+          <div class="method-item">
+            <div class="method-marker">05</div>
+            <div class="method-content">
+              <h4>Model training and SHAP attribution</h4>
+              <p>Three models trained with 80/20 stratified split. SHAP TreeExplainer applied to validate that models learned physically correct features rather than spurious correlations.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="margin-bottom: 24px;">
+          <div class="card-eyebrow">Feature engineering</div>
+        </div>
+        <div class="feature-group-list">
+          <div class="feature-group-item">
+            <h4><span class="feature-group-chip">V_bus</span> Voltage magnitude</h4>
+            <p>Per-unit RMS voltage at each bus. Captures the voltage sag that defines fault severity and electrical distance from the fault location.</p>
+          </div>
+          <div class="feature-group-item">
+            <h4><span class="feature-group-chip">Angle_bus</span> Voltage angle</h4>
+            <p>Phase angle relative to the reference bus. Carries critical information for high-impedance fault detection where magnitude alone is insufficient.</p>
+          </div>
+          <div class="feature-group-item">
+            <h4><span class="feature-group-chip">V0_bus</span> Zero sequence</h4>
+            <p>The component that exists only when a ground path is present. Spikes during LG, LLG, and HIF; theoretically zero for balanced operation and LL faults.</p>
+          </div>
+          <div class="feature-group-item">
+            <h4><span class="feature-group-chip">V1_bus</span> Positive sequence</h4>
+            <p>The fundamental balanced operating voltage. Reduces during every fault type, providing a baseline indication that a fault has occurred.</p>
+          </div>
+          <div class="feature-group-item">
+            <h4><span class="feature-group-chip">V2_bus</span> Negative sequence</h4>
+            <p>The unbalance indicator. Rises sharply during asymmetric faults (LG, LL, LLG); near zero for balanced faults (LLLG) and normal operation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="limitations-card">
+      <div class="card-eyebrow">Scope and limitations</div>
+      <p class="limitations-text">
+        This system is trained on steady-state simulation data from the IEEE 33-bus benchmark network. 
+        Performance on real grid measurements may differ due to instrumentation noise, harmonic distortion, and 
+        operating conditions not represented in the simulation. The model is specific to this topology and will not 
+        transfer directly to other networks without retraining. Zero-sequence impedance was approximated as Z0 = 3·Z1 
+        uniformly across all lines — a standard assumption when actual zero-sequence data is unavailable, but one that 
+        should be revisited for utility-grade deployment.
+      </p>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast">
+  <span class="toast-dot"></span>
+  <span id="toast-text"></span>
+</div>
+
+<div class="modal-bg" id="shap-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">Feature attribution</h2>
+      <button class="modal-close" onclick="closeShap()">✕</button>
+    </div>
+    <div id="shap-modal-content"></div>
+  </div>
+</div>
+
+<script>
+const API = 'https://YOUR-APP-NAME.onrender.com';
+let selectedModel = 'rf';
+let shapEnabled = false;
+let batchData = [];
+let batchResults = [];
+
+const SAMPLES = {
+  lg: [1.0,9.26e-9,0.01416,0.02172,0.02920,0.04741,0.05089,0.05571,0.06202,0.06788,0.06873,0.07022,0.07640,0.07875,0.08021,0.08161,0.08374,0.08436,0.00056,0.00432,0.00509,0.00581,0.01770,0.02435,0.02771,0.04937,0.05199,0.06350,0.07180,0.07551,0.07951,0.08040,0.08067,0.0,0.01448,0.11679,0.19946,0.28375,0.16558,-0.12610,-0.08052,-0.17359,-0.25352,-0.24435,-0.22982,-0.34683,-0.44757,-0.49592,-0.52586,-0.62504,-0.63742,0.00094,-0.08288,-0.10712,-0.13261,0.07801,-0.03348,-0.08854,0.21563,0.28694,0.39331,0.49352,0.62835,0.52128,0.49198,0.48214,0.0,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,0.59821,1.0,0.79762,0.78353,0.77605,0.76865,0.75025,0.74676,0.74192,0.73565,0.72983,0.72897,0.72747,0.72136,0.71910,0.71769,0.71632,0.71430,0.71369,0.79709,0.79352,0.79281,0.79217,0.77994,0.77327,0.76994,0.74832,0.74576,0.73432,0.72610,0.72255,0.71838,0.71747,0.71718,0.0,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940,0.19940],
+  normal: [1.0,0.99845,0.991063,0.987032,0.983072,0.973263,0.971356,0.968751,0.965466,0.962446,0.962004,0.961238,0.958147,0.95701,0.956318,0.955653,0.954678,0.954388,0.998195,0.996478,0.996141,0.995837,0.989351,0.986166,0.984572,0.972264,0.970931,0.964966,0.960669,0.958797,0.956564,0.956069,0.955913,0.0,0.007615,0.049883,0.08357,0.117317,0.06464,-0.05836,-0.039501,-0.076801,-0.108038,-0.104369,-0.098639,-0.142861,-0.18064,-0.198514,-0.209405,-0.245079,-0.249464,0.002387,-0.02972,-0.038944,-0.048614,0.035133,-0.006852,-0.027521,0.084671,0.113088,0.154274,0.19245,0.244762,0.20129,0.189334,0.185255,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.99845,0.991063,0.987032,0.983072,0.973263,0.971356,0.968751,0.965466,0.962446,0.962004,0.961238,0.958147,0.95701,0.956318,0.955653,0.954678,0.954388,0.998195,0.996478,0.996141,0.995837,0.989351,0.986166,0.984572,0.972264,0.970931,0.964966,0.960669,0.958797,0.956564,0.956069,0.955913,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],
+  lllg: [1.0,0.0,0.014165,0.021724,0.029204,0.047417,0.050894,0.055718,0.062023,0.06788,0.068733,0.070221,0.076407,0.078759,0.080217,0.081612,0.08375,0.08437,0.000561,0.004323,0.005098,0.005817,0.017702,0.02436,0.027712,0.049377,0.051995,0.063505,0.071802,0.075513,0.07952,0.080401,0.080674,0.0,-26.996249,174.345456,173.39151,172.909111,177.623063,-177.922305,-178.720277,-177.754216,-177.102722,-177.239232,-177.453682,-176.572303,-175.762943,-175.414143,-175.237414,-174.522885,-174.46249,-160.363298,-161.808716,-160.71094,-159.521442,177.213979,-178.462598,-177.121692,176.964542,176.10351,175.629754,175.164335,174.130307,175.431102,175.749521,175.853349,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.014165,0.021724,0.029204,0.047417,0.050894,0.055718,0.062023,0.06788,0.068733,0.070221,0.076407,0.078759,0.080217,0.081612,0.08375,0.08437,0.000561,0.004323,0.005098,0.005817,0.017702,0.02436,0.027712,0.049377,0.051995,0.063505,0.071802,0.075513,0.07952,0.080401,0.080674,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+};
+
+const FAULT_DESC = {
+  Normal: 'Grid operating within design parameters. No fault present.',
+  HIF: 'High-impedance fault — limited current, often missed by conventional protection.',
+  LG: 'Single line-to-ground fault — the most common distribution fault type.',
+  LL: 'Line-to-line fault — two phase conductors shorted.',
+  LLG: 'Double line-to-ground fault — two phases simultaneously grounded.',
+  LLLG: 'Three-phase fault to ground — the most severe condition.'
+};
+
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'overview') animateCounters();
+}
+
+async function checkApiStatus() {
+  try {
+    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      document.getElementById('status-orb').className = 'status-orb online';
+      document.getElementById('status-text').textContent = 'Live';
+    } else throw new Error();
+  } catch {
+    document.getElementById('status-orb').className = 'status-orb offline';
+    document.getElementById('status-text').textContent = 'Offline';
+  }
+}
+
+function animateCounters() {
+  document.querySelectorAll('[data-target]').forEach(el => {
+    const target = parseFloat(el.dataset.target);
+    const isFloat = target % 1 !== 0;
+    const duration = 1400;
+    const start = performance.now();
+    function frame(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const v = target * eased;
+      el.textContent = isFloat ? v.toFixed(2) : Math.round(v).toLocaleString();
+      if (t < 1) requestAnimationFrame(frame);
+      else el.textContent = isFloat ? target.toFixed(2) : target.toLocaleString();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+function onFeatureInput() {
+  const val = document.getElementById('feature-input').value.trim();
+  const parts = val.split(',').map(s => s.trim()).filter(s => s !== '');
+  const count = parts.length;
+  document.getElementById('feature-count-text').textContent = `${count} of 165`;
+  const pct = Math.min((count / 165) * 100, 100);
+  const fill = document.getElementById('counter-fill');
+  fill.style.width = pct + '%';
+  if (count === 165) {
+    fill.classList.add('complete');
+    document.getElementById('predict-btn').disabled = false;
+  } else {
+    fill.classList.remove('complete');
+    document.getElementById('predict-btn').disabled = true;
+  }
+}
+
+function selectModel(m, el) {
+  selectedModel = m;
+  document.querySelectorAll('.model-pill').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function toggleShap() {
+  shapEnabled = !shapEnabled;
+  document.getElementById('shap-toggle').className = 'toggle-switch' + (shapEnabled ? ' on' : '');
+}
+
+function loadSample(type) {
+  document.getElementById('feature-input').value = SAMPLES[type].join(', ');
+  onFeatureInput();
+  showToast(`Sample loaded · ${type.toUpperCase()}`);
+}
+
+async function runPrediction() {
+  const val = document.getElementById('feature-input').value.trim();
+  const features = val.split(',').map(s => parseFloat(s.trim()));
+  const btn = document.getElementById('predict-btn');
+  const btnText = document.getElementById('predict-btn-text');
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span> Diagnosing';
+
+  try {
+    const res = await fetch(API + '/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ features, model: selectedModel, include_shap: shapEnabled })
+    });
+    if (!res.ok) throw new Error('API ' + res.status);
+    const data = await res.json();
+    renderResults(data);
+    showToast('Diagnosis complete');
+  } catch (e) {
+    showToast('Error · ' + e.message, 'error');
+    document.getElementById('results-area').innerHTML = `<div class="result-empty"><div class="result-empty-orb">!</div><p>${e.message}</p></div>`;
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = 'Diagnose';
+  }
+}
+
+function renderResults(data) {
+  const ft = data.fault_type;
+  const fl = data.fault_location;
+  const cls = ft.predicted_class.toLowerCase();
+
+  const probRows = Object.entries(ft.all_probabilities)
+    .sort((a,b) => b[1]-a[1])
+    .map(([k, v]) => {
+      const pct = (v * 100).toFixed(1);
+      const isTop = k === ft.predicted_class;
+      return `<div class="prob-row">
+        <span class="prob-label">${k}</span>
+        <div class="prob-bar-bg"><div class="prob-bar-fill ${isTop?'top':''}" style="width:${pct}%"></div></div>
+        <span class="prob-pct">${pct}%</span>
+      </div>`;
+    }).join('');
+
+  const altLocs = fl.top_3_buses.slice(1).map(b => `<span>Bus ${b.bus} · ${(b.confidence*100).toFixed(0)}%</span>`).join('');
+
+  let shapBtn = '';
+  if (data.shap_explanation && !data.shap_explanation.note) {
+    shapBtn = `<button class="btn-secondary" style="margin-top:14px;" onclick='showShap(${JSON.stringify(data.shap_explanation)})'>View feature attribution →</button>`;
+  }
+
+  document.getElementById('results-area').innerHTML = `
+    <div class="result-classification">
+      <div class="classification-eyebrow">Predicted fault type</div>
+      <div class="classification-name ${cls}">${ft.predicted_class}</div>
+      <div class="classification-desc">${FAULT_DESC[ft.predicted_class] || ''}</div>
+
+      <div class="prob-section">
+        <div class="classification-eyebrow">Class probabilities</div>
+        ${probRows}
+      </div>
+
+      <div class="location-section">
+        <div class="location-eyebrow">Estimated location</div>
+        <div class="location-display">
+          <div class="location-bus-num">Bus ${fl.predicted_bus}</div>
+          <div class="location-confidence"><strong>${(fl.confidence*100).toFixed(1)}%</strong> confidence</div>
+        </div>
+        <div class="alt-locations">Alternatives: ${altLocs}</div>
+      </div>
+
+      <div class="meta-footer">${data.models_used.fault_type} · type · ${data.models_used.fault_location} · location</div>
+      ${shapBtn}
+    </div>
+  `;
+}
+
+function showShap(exp) {
+  const renderBlock = (items, title) => {
+    const maxVal = Math.max(...items.map(i => Math.abs(i.shap_value)));
+    return `<div class="shap-block">
+      <div class="shap-block-title">${title}</div>
+      ${items.map(item => {
+        const isPos = item.shap_value >= 0;
+        const w = Math.min((Math.abs(item.shap_value) / maxVal) * 50, 50);
+        return `<div class="shap-bar-item">
+          <span class="shap-feat">${item.feature}</span>
+          <div class="shap-bar-track">
+            <div class="shap-bar-axis"></div>
+            <div class="shap-bar-fill ${isPos?'pos':'neg'}" style="width:${w}%"></div>
+          </div>
+          <span class="shap-value ${isPos?'pos':'neg'}">${isPos?'+':''}${item.shap_value.toFixed(4)}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  };
+  document.getElementById('shap-modal-content').innerHTML =
+    renderBlock(exp.fault_type_explanation, 'Top features · fault type') +
+    renderBlock(exp.fault_location_explanation, 'Top features · location');
+  document.getElementById('shap-modal').classList.add('visible');
+}
+
+function closeShap() { document.getElementById('shap-modal').classList.remove('visible'); }
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('batch-drop').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function loadBatchFile(e) { if (e.target.files[0]) processFile(e.target.files[0]); }
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.trim().split('\n').filter(l => l.trim());
+    batchData = lines.map(l => l.split(',').map(v => parseFloat(v.trim())));
+    document.getElementById('batch-file-info').classList.add('visible');
+    document.getElementById('batch-filename').textContent = file.name;
+    document.getElementById('batch-rowcount').textContent = `· ${batchData.length} rows`;
+    document.getElementById('batch-btn').disabled = false;
+    showToast(`${batchData.length} rows ready`);
+  };
+  reader.readAsText(file);
+}
+
+async function runBatch() {
+  if (!batchData.length) return;
+  const model = document.getElementById('batch-model').value;
+  const btn = document.getElementById('batch-btn');
+  const btnText = document.getElementById('batch-btn-text');
+  const wrap = document.getElementById('batch-progress');
+  const bar = document.getElementById('batch-progress-bar');
+  const txt = document.getElementById('batch-progress-text');
+
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span> Processing';
+  wrap.classList.add('visible');
+  batchResults = [];
+
+  const CHUNK = 20;
+  for (let i = 0; i < batchData.length; i += CHUNK) {
+    const chunk = batchData.slice(i, i + CHUNK).filter(r => r.length === 165);
+    if (!chunk.length) continue;
+    try {
+      const res = await fetch(API + '/predict/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: chunk, model })
+      });
+      const data = await res.json();
+      batchResults.push(...data.predictions);
+    } catch {}
+    const pct = Math.min(((i + CHUNK) / batchData.length) * 100, 100);
+    bar.style.width = pct + '%';
+    txt.textContent = `Processed ${Math.min(i + CHUNK, batchData.length)} of ${batchData.length}`;
+  }
+
+  renderBatchResults();
+  btn.disabled = false;
+  btnText.textContent = 'Run batch diagnosis';
+  wrap.classList.remove('visible');
+  showToast(`Processed ${batchResults.length} rows`);
+}
+
+function renderBatchResults() {
+  if (!batchResults.length) return;
+  const counts = {};
+  batchResults.forEach(r => { counts[r.fault_type] = (counts[r.fault_type]||0) + 1; });
+
+  const summary = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
+    `<span class="batch-tag tag-${k.toLowerCase()}">${k} · ${v}</span>`
+  ).join('');
+
+  const rows = batchResults.slice(0, 50).map((r,i) => `<tr>
+    <td>${i+1}</td>
+    <td><span class="batch-tag tag-${r.fault_type.toLowerCase()}">${r.fault_type}</span></td>
+    <td>${(r.fault_type_confidence*100).toFixed(0)}%</td>
+    <td>Bus ${r.fault_bus}</td>
+    <td>${(r.fault_bus_confidence*100).toFixed(0)}%</td>
+  </tr>`).join('');
+
+  document.getElementById('batch-results').innerHTML = `
+    <div class="batch-summary">${summary}</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <div style="font-family:var(--mono); font-size:11px; color:var(--ink-mute);">${batchResults.length} rows · showing first 50</div>
+      <button class="btn-secondary" onclick="downloadResults()">Download CSV ↓</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Fault type</th><th>Type conf.</th><th>Location</th><th>Loc conf.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function downloadResults() {
+  const csv = 'row,fault_type,fault_type_confidence,fault_bus,fault_bus_confidence\n' +
+    batchResults.map((r,i) => `${i+1},${r.fault_type},${r.fault_type_confidence},${r.fault_bus},${r.fault_bus_confidence}`).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'faultsense_predictions.csv';
+  a.click();
+}
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// INIT
+window.addEventListener('load', () => {
+  checkApiStatus();
+  setInterval(checkApiStatus, 10000);
+  setTimeout(animateCounters, 400);
+});
+</script>
+</body>
+</html>
