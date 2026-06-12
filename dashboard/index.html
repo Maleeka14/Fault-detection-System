@@ -876,19 +876,119 @@ tr:hover td { background: var(--paper-alt); }
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1024px) {
-  .sidebar { width: 240px; }
-  .main { margin-left: 240px; }
-  .section { padding: 40px 32px 60px; }
+  .sidebar { width: 220px; }
+  .main { margin-left: 220px; }
+  .section { padding: 40px 28px 60px; }
   .predict-layout, .about-layout, .hero { grid-template-columns: 1fr; }
   .hero-text-side { border-right: none; border-bottom: 1px solid var(--rule); }
   .fault-grid { grid-template-columns: 1fr; }
   .fault-row { border-right: none; }
+  .results-strip { grid-template-columns: 1fr 1fr; }
+  .result-cell:nth-child(2) { border-right: none; }
+  .result-cell:nth-child(3) { border-top: 1px solid var(--rule); grid-column: 1 / -1; }
+}
+
+/* ─── MOBILE HEADER ─── */
+.mobile-header {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  height: 52px; background: var(--paper-alt);
+  border-bottom: 1px solid var(--rule);
+  align-items: center; justify-content: space-between;
+  padding: 0 18px;
+}
+.mobile-header-title {
+  font-size: 17px; font-weight: 600; color: var(--ink);
+}
+.menu-btn {
+  background: none; border: none; color: var(--ink);
+  cursor: pointer; font-size: 22px; padding: 4px;
+  line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; z-index: 99;
+  background: rgba(14,31,61,0.4); backdrop-filter: blur(2px);
+}
+.sidebar-overlay.visible { display: block; }
+
+@media (max-width: 768px) {
+  .mobile-header { display: flex; }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 200;
+    top: 52px;
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .sidebar-overlay { top: 52px; }
+
+  .main { margin-left: 0; }
+  .section { padding: 72px 18px 56px; max-width: 100%; }
+
+  .page-title { font-size: 26px; letter-spacing: -0.3px; }
+  .page-sub { font-size: 14px; }
+
+  .hero-diagram-side { display: none; }
+
+  .results-strip { grid-template-columns: 1fr; }
+  .result-cell { border-right: none; border-bottom: 1px solid var(--rule); }
+  .result-cell:last-child { border-bottom: none; }
+  .result-cell:nth-child(3) { border-top: none; grid-column: unset; }
+  .result-num { font-size: 40px; }
+  .result-num span.suffix { font-size: 22px; }
+
+  .glossary-header { flex-direction: column; gap: 6px; }
+  .glossary-title { font-size: 20px; }
+
+  .fault-code { font-size: 15px; }
+
+  .feature-table-row { grid-template-columns: 1fr auto; gap: 8px; }
+  .feature-desc { display: none; }
+
+  .predict-layout, .about-layout { grid-template-columns: 1fr; }
+
+  .hero-counters { flex-wrap: wrap; gap: 16px; }
+
+  .model-card-row { grid-template-columns: 1fr; gap: 10px; }
+  .model-info-name { font-size: 16px; }
+  .accuracy-pct { text-align: left; font-size: 20px; }
+
+  .compare-header { flex-direction: column; gap: 4px; align-items: flex-start; }
+  .compare-task-name { font-size: 17px; }
+
+  .finding-card { padding: 22px 18px; }
+  .finding-text { font-size: 14px; }
+
+  .classification-name { font-size: 30px; }
+  .location-bus-num { font-size: 38px; }
+
+  .prob-row { grid-template-columns: 70px 1fr 50px; }
+
+  .shap-bar-item { grid-template-columns: 90px 1fr 56px; }
+  .modal-content { padding: 22px 16px; width: 96vw; }
+
+  .dropzone { padding: 32px 16px; }
+
+  .about-layout > div:first-child { order: 1; }
+  .about-layout > div:last-child { order: 2; }
+
+  .sidebar-footer { padding: 16px 20px; }
+  .brand { padding: 20px 20px 16px; }
 }
 </style>
 </head>
 <body>
 
-<nav class="sidebar">
+<div class="mobile-header">
+  <span class="mobile-header-title">GridSense</span>
+  <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+</div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<nav class="sidebar" id="sidebar">
   <div class="brand">
     <div class="brand-mark">
       <span class="brand-mark-icon"></span>
@@ -1516,6 +1616,22 @@ function showSection(name, el) {
   document.getElementById('section-' + name).classList.add('active');
   el.classList.add('active');
   if (name === 'overview') animateCounters();
+  closeSidebar();
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('visible');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('visible');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('visible');
 }
 
 async function checkApiStatus() {
