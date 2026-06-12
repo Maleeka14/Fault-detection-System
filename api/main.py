@@ -22,6 +22,7 @@ Usage:
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
 import numpy as np
@@ -312,21 +313,10 @@ def get_shap_explanation(features_raw: np.ndarray, model_key: str = "rf"):
 # ──────────────────────────────────────────────
 #  Endpoints
 # ──────────────────────────────────────────────
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
-    return {
-        "name": "Fault Detection API",
-        "description": "AI-Based Power System Fault Detection on IEEE 33-Bus Distribution Network",
-        "version": "1.0.0",
-        "endpoints": {
-            "GET /health": "Health check",
-            "GET /models": "Available models and accuracy",
-            "GET /features": "List of 165 feature names",
-            "POST /predict": "Single prediction with optional SHAP",
-            "POST /predict/batch": "Batch prediction (up to 100 rows)",
-        },
-        "docs": "/docs",
-    }
+    html_path = os.path.join(BASE_DIR, "..", "dashboard", "index.html")
+    return FileResponse(html_path, media_type="text/html")
 
 
 @app.get("/health")
